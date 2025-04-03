@@ -5,8 +5,7 @@ This project implements Deep Reinforcement Learning for autonomous drone navigat
 
  Features  
  **Deep Q-Network (DQN) / PPO-based Navigation**  
- **Obstacle Detection & Avoidance**  
- **Sensor Fusion (LiDAR, IMU, GPS)**  
+ **Obstacle Detection & Avoidance**   
  **Simulation in AirSim / ROS**  
 
 
@@ -50,28 +49,28 @@ Model inference
 
 Trained model action prediction
 
-Implementation Details
-State Representation: The drone's state consists of its position, velocity, and nearby obstacles.
+# Implementation Details
+ State Representation: The drone's state consists of its position, velocity, and nearby obstacles.
 
-Action Space: The agent can move forward, left, right, or hover.
+ Action Space: The agent can move forward, left, right, or hover.
 
-Reward Function: Encourages efficient movement while penalizing collisions.
+ Reward Function: Encourages efficient movement while penalizing collisions.
 
-Neural Network Architecture: A fully connected DQN with two hidden layers.
+ Neural Network Architecture: A fully connected DQN with two hidden layers.
 
-Results
+# Results
 The drone successfully learns collision-free navigation.
 
 Performance improves as epsilon decays, reducing random exploration.
 
 Training logs and evaluation results can be found in train_dqn.log.
 
-Future Enhancements
-✅ Integrate Lidar/GPS sensor data for real-world testing.
+# Future Enhancements
+ Integrate Lidar/GPS sensor data for real-world testing.
 
-✅ Implement Deep Deterministic Policy Gradient (DDPG) for continuous action control.
+ Implement Deep Deterministic Policy Gradient (DDPG) for continuous action control.
 
-✅ Train using AirSim or Gazebo for realistic simulations.
+ Train using AirSim or Gazebo for realistic simulations.
 
 Acknowledgments
 Deep Q-Networks (DQN) Paper: Mnih et al., 2015
