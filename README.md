@@ -6,7 +6,7 @@ This project implements Deep Reinforcement Learning for autonomous drone navigat
  Features  
  **Deep Q-Network (DQN) / PPO-based Navigation**  
  **Obstacle Detection & Avoidance**   
- **Simulation in AirSim **  
+ **Simulation in AirSim**  
 
 
 
@@ -30,7 +30,29 @@ This will train the DQN agent and save the model as dqn_model.pth.
 Run the script in the terminal :
 python Drone_env.py
 This will setup your drone environment 
-a
+copy this code in your settings.json file in your Airsim folder
+{
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "ClockSpeed": 1,
+  "LocalHostIp": "127.0.0.1",
+  "ViewMode": "FlyWithMe",
+  "RpcEnabled": true,
+  "Vehicles": {
+    "Drone1": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true
+    }
+  },
+  "DefaultVehicleConfig": "Drone1",
+  "Recording": {
+    "RecordInterval": 0.05,
+    "Cameras": [
+      { "CameraName": "front_center", "ImageType": 0, "PixelsAsFloat": false, "Compress": true }
+    ]
+  }
+}
+
 
 # Train the RL Model for drone environment
 Run the training script in the terminal :
