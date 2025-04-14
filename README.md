@@ -101,7 +101,7 @@ Training logs and evaluation results can be found in train_dqn.log.
 
  Train using AirSim or Gazebo for realistic simulations.
 
-Acknowledgments
+# Acknowledgments
 Deep Q-Networks (DQN) Paper: Mnih et al., 2015
 
 Reinforcement Learning Resources: OpenAI Gym
