@@ -41,7 +41,10 @@ python test_dqn.py
 
 # Drive Link for Video Training and Testing :
 https://drive.google.com/drive/folders/13mVUcty2tl90VBDDeFINvF75wmFfbwMI?usp=drive_link
-This script checks:
+
+
+
+# The script checks:
 
 Environment initialization
 
