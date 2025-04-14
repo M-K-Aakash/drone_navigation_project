@@ -8,8 +8,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_dqn():
     env = DroneEnv()
-    state_dim = env.observation_space[0]  # ✅ Fixed here
-    action_dim = len(env.action_space)  # ✅ Fixed (action_space is a list)
+    state_dim = env.observation_space[0]  
+    action_dim = len(env.action_space) 
 
     model = DQN(state_dim, action_dim).to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -19,7 +19,7 @@ def train_dqn():
     epsilon_decay = 0.995  
 
     num_episodes = 100
-    reward_threshold = 200  # ✅ Auto-stop if this reward is met
+    reward_threshold = 200  
 
     with open("train_dqn.log", "w") as log_file:
         log_file.write("Training started, resetting log...\n")
@@ -35,7 +35,7 @@ def train_dqn():
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
 
             if np.random.rand() < epsilon:
-                action = np.random.choice(len(env.action_space))  # ✅ Random action selection
+                action = np.random.choice(len(env.action_space)) 
             else:
                 action = model(state_tensor).argmax().item()  
 
