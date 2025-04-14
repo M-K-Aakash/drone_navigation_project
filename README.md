@@ -6,7 +6,7 @@ This project implements Deep Reinforcement Learning for autonomous drone navigat
  Features  
  **Deep Q-Network (DQN) / PPO-based Navigation**  
  **Obstacle Detection & Avoidance**   
- **Simulation in AirSim / ROS**  
+ **Simulation in AirSim **  
 
 
 
@@ -18,8 +18,8 @@ git clone https://github.com/harshraj2008/drone_navigation_project.git
 cd drone_navigation_project
 
 # Install Dependencies
-Ensure you have Python 3.8+ installed, then run:
-pip install -r requirements.txt
+Ensure you have Python 3.8+ installed, 
+
 
 # Train the Model
 Run the training script in the terminal :
@@ -29,11 +29,13 @@ This will train the DQN agent and save the model as dqn_model.pth.
 # Setup the Drone Environment
 Run the script in the terminal :
 python Drone_env.py
-This will train the DQN agent and save the model as dqn_model.pth.
+This will setup your drone environment 
+a
 
 # Train the RL Model for drone environment
 Run the training script in the terminal :
 python drone_train.py
+then open airsimNH application  in airsimNH folder 
 This will train the DQN agent and save the model as dqn_model.pth.
 
 # After training, evaluate the model using:
