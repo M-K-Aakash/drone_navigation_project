@@ -54,7 +54,7 @@ python Drone_env.py
   }
 }
 
-# This will setup your drone environment 
+**This will enable your  your drone to fly in the application**
 
 # Train the RL Model for drone environment
 Run the training script in the terminal :
