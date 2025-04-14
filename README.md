@@ -29,8 +29,9 @@ This will train the DQN agent and save the model as dqn_model.pth.
 # Setup the Drone Environment
 Run the script in the terminal :
 python Drone_env.py
-This will setup your drone environment 
-copy this code in your settings.json file in your Airsim folder
+
+
+# copy this code in your settings.json file in your Airsim folder to enable drone flight
 {
   "SettingsVersion": 1.2,
   "SimMode": "Multirotor",
@@ -53,6 +54,7 @@ copy this code in your settings.json file in your Airsim folder
   }
 }
 
+# This will setup your drone environment 
 
 # Train the RL Model for drone environment
 Run the training script in the terminal :
