@@ -1,70 +1,126 @@
 import torch
+import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
+import random
 import numpy as np
+from collections import deque
 from Drone_env import DroneEnv
-from train_dqn import DQN
+from dqn_model import DQN
 
+# ✅ Hyperparameters
+EPISODES = 200
+GAMMA = 0.99
+LR = 1e-3
+BATCH_SIZE = 64
+EPSILON_START = 1.0
+EPSILON_END = 0.05
+EPSILON_DECAY = 0.995
+
+# ✅ Initialize environment and device
+env = DroneEnv()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"\nUsing device: {device}\n")
 
-def train_dqn():
-    env = DroneEnv()
-    state_dim = env.observation_space[0]  
-    action_dim = len(env.action_space) 
+# ✅ Initialize DQN
+state_size = len(env.get_obs())
+action_size = env.num_actions
+model = DQN(state_size, action_size).to(device)
+optimizer = optim.Adam(model.parameters(), lr=LR)
+memory = deque(maxlen=10000)
 
-    model = DQN(state_dim, action_dim).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    epsilon = 1.0  
-    epsilon_min = 0.01  
-    epsilon_decay = 0.995  
+def choose_action(state, epsilon):
+    """Epsilon-greedy action selection"""
+    if random.random() < epsilon:
+        return random.randrange(action_size)
+    else:
+        state = torch.FloatTensor(state).unsqueeze(0).to(device)
+        with torch.no_grad():
+            q_values = model(state)
+        return torch.argmax(q_values).item()
 
-    num_episodes = 100
-    reward_threshold = 200  
 
-    with open("train_dqn.log", "w") as log_file:
-        log_file.write("Training started, resetting log...\n")
-        log_file.write("======================================\n")
+def train_step():
+    """Train model from replay buffer"""
+    if len(memory) < BATCH_SIZE:
+        return
 
-    for episode in range(num_episodes):
+    batch = random.sample(memory, BATCH_SIZE)
+    states, actions, rewards, next_states, dones = zip(*batch)
+
+    states = torch.FloatTensor(states).to(device)
+    actions = torch.LongTensor(actions).unsqueeze(1).to(device)
+    rewards = torch.FloatTensor(rewards).to(device)
+    next_states = torch.FloatTensor(next_states).to(device)
+    dones = torch.FloatTensor(dones).to(device)
+
+    q_values = model(states).gather(1, actions)
+    next_q = model(next_states).max(1)[0].detach()
+    expected_q = rewards + (GAMMA * next_q * (1 - dones))
+
+    loss = F.mse_loss(q_values.squeeze(), expected_q)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+
+def train_model():
+    """Main DQN training loop"""
+    epsilon = EPSILON_START
+
+    for ep in range(EPISODES):
         state = env.reset()
         total_reward = 0
-        done = False
-        step_count = 0
 
-        while not done:
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
-
-            if np.random.rand() < epsilon:
-                action = np.random.choice(len(env.action_space)) 
-            else:
-                action = model(state_tensor).argmax().item()  
-
+        for t in range(200):
+            action = choose_action(state, epsilon)
             next_state, reward, done, _ = env.step(action)
-            total_reward += reward
-            step_count += 1
 
-            # ✅ Print step-wise details (but don't save them)
-            q_values = model(state_tensor).detach().cpu().numpy()
-            log_message = f"Episode {episode+1}, Step {step_count}: Q-values {q_values}, Action {action}, Reward {reward:.2f}"
-            print(log_message)  
-
+            memory.append((state, action, reward, next_state, done))
             state = next_state
+            total_reward += reward
 
-        # ✅ Save only episode summary to log
-        with open("train_dqn.log", "a") as log_file:
-            summary_message = f"Episode {episode+1} Completed! Total Reward: {total_reward:.2f}\n"
-            print(summary_message)
-            log_file.write(summary_message)
-            log_file.flush()  # Ensures logs are written immediately
+            train_step()
+            if done:
+                break
 
-        epsilon = max(epsilon * epsilon_decay, epsilon_min)
+        epsilon = max(EPSILON_END, epsilon * EPSILON_DECAY)
+        print(f"Episode {ep+1}/{EPISODES} | Reward: {total_reward:.2f} | Epsilon: {epsilon:.3f}")
 
-        # ✅ Auto-stop if optimal reward is achieved
-        if total_reward >= reward_threshold:
-            print(f"✅ Optimal reward {total_reward} achieved! Stopping training early.")
+        if (ep + 1) % 50 == 0:
+            torch.save(model.state_dict(), "drone_dqn.pth")
+            print("✅ Model saved as drone_dqn.pth")
+
+    env.close()
+
+
+def test_model():
+    """Test trained model"""
+    model_path = "drone_dqn.pth"
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+
+    state = env.reset()
+    total_reward = 0
+
+    for t in range(200):
+        action = choose_action(state, 0.0)
+        next_state, reward, done, _ = env.step(action)
+        total_reward += reward
+        state = next_state
+
+        if done:
             break
 
-    print("Training completed.")
+    print(f"✅ Test Reward: {total_reward:.2f}")
+    env.close()
+
 
 if __name__ == "__main__":
-    train_dqn()
+    # Choose whether to train or test
+    mode = input("Enter 'train' to train or 'test' to evaluate model: ").strip().lower()
+    if mode == "train":
+        train_model()
+    else:
+        test_model()

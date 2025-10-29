@@ -1,87 +1,122 @@
+import airsim
 import numpy as np
 import time
-import airsim
+import gymnasium as gym
+
 
 class DroneEnv:
     def __init__(self):
-        # Initialize AirSim client
+        # Connect to AirSim simulator
+        print("Connecting to AirSim client...")
         self.client = airsim.MultirotorClient()
         self.client.confirmConnection()
+        self.client.enableApiControl(True)
+        self.client.armDisarm(True)
+        print("Connected!\n")
 
-        # Enable API control
+        # Take off
+        self.client.takeoffAsync().join()
+
+        # Define action space (simple movements)
+        # Actions: [0: forward, 1: backward, 2: left, 3: right, 4: up, 5: down]
+        self.action_space = [0, 1, 2, 3, 4, 5]
+        self.num_actions = len(self.action_space)
+
+        # Observation space: [x, y, z, vx, vy, vz]
+        self.observation_space = (6,)
+
+        # Step size for movement
+        self.step_length = 2.0
+        self.goal = np.array([0, 0, -10])  # Example target position
+
+    def reset(self):
+        """Reset the environment and drone position"""
+        self.client.reset()
+        time.sleep(1)
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
         self.client.takeoffAsync().join()
-        
-        # Move to a safe altitude to prevent ground collisions
-        self.client.moveToZAsync(-3, 2).join()
 
-        # Action space: [Throttle Up, Throttle Down, Move Forward, Move Backward, Hover]
-        self.action_space = [0, 1, 2, 3, 4]  
-        self.observation_space = (5,)  # [pos.x, pos.y, pos.z, vel.x, vel.y]
+        state = self.get_obs()
+        return state
 
-    def get_state(self):
-        # Get current position and velocity
-        state = self.client.getMultirotorState()
-        pos = state.kinematics_estimated.position
-        vel = state.kinematics_estimated.linear_velocity
-        return np.array([pos.x_val, pos.y_val, pos.z_val, vel.x_val, vel.y_val])
+    def get_obs(self):
+        """Return current state: position + velocity"""
+        kinematics = self.client.getMultirotorState().kinematics_estimated
+        pos = kinematics.position
+        vel = kinematics.linear_velocity
+        obs = np.array([pos.x_val, pos.y_val, pos.z_val, vel.x_val, vel.y_val, vel.z_val], dtype=np.float32)
+        return obs
 
-    def check_collision(self):
-        # Retrieve collision information from AirSim
-        collision_info = self.client.simGetCollisionInfo()
-        return collision_info.has_collided
+    def compute_reward(self, position):
+        """Reward based on distance to goal"""
+        dist = np.linalg.norm(self.goal - position)
+        reward = -dist * 0.1
 
-    def calculate_reward(self, state):
-        z = state[2]  # Altitude (z-value)
+        # Give bonus for reaching near goal
+        if dist < 2:
+            reward += 100
+            done = True
+        else:
+            done = False
 
-        if self.check_collision():  # Collision detected
-            return -50, True  # Large penalty and end episode
-        
-        if z < -5:  # Too low (risk of crashing)
-            return -10, True  
-        elif z > -1.5:  # Too high (out of desired range)
-            return -5, False  
-        else:  # Optimal height
-            return 10, False  
+        return reward, done
 
     def step(self, action):
-        # Ensure API control is still enabled
-        if not self.client.isApiControlEnabled():
-            print("Re-enabling API control...")
-            self.client.enableApiControl(True)
-            self.client.armDisarm(True)
+        """Perform one step in the environment"""
+        # Get current position
+        state = self.client.getMultirotorState()
+        pos = state.kinematics_estimated.position
 
-        # Execute action
-        if action == 0:  # Throttle Up
-            self.client.moveByVelocityZAsync(0, 0, -1, 3).join()  # Increased duration
-        elif action == 1:  # Throttle Down
-            self.client.moveByVelocityZAsync(0, 0, 1, 3).join()
-        elif action == 2:  # Move Forward
-            self.client.moveByVelocityAsync(1, 0, 0, 3).join()
-        elif action == 3:  # Move Backward
-            self.client.moveByVelocityAsync(-1, 0, 0, 3).join()
-        elif action == 4:  # Hover
-            self.client.hoverAsync().join()
+        # Move drone according to chosen action
+        if action == 0:   # forward
+            vx, vy, vz = self.step_length, 0, 0
+        elif action == 1: # backward
+            vx, vy, vz = -self.step_length, 0, 0
+        elif action == 2: # left
+            vx, vy, vz = 0, -self.step_length, 0
+        elif action == 3: # right
+            vx, vy, vz = 0, self.step_length, 0
+        elif action == 4: # up
+            vx, vy, vz = 0, 0, -self.step_length
+        elif action == 5: # down
+            vx, vy, vz = 0, 0, self.step_length
+        else:
+            vx, vy, vz = 0, 0, 0
 
-        time.sleep(1)  
+        # Command movement
+        duration = 1.0
+        self.client.moveByVelocityAsync(vx, vy, vz, duration).join()
 
-        # Get new state and check for collisions
-        state = self.get_state()
-        reward, done = self.calculate_reward(state)
+        # Get next state
+        next_state = self.get_obs()
+        reward, done = self.compute_reward(next_state[:3])
 
-        print(f"New State: {state}, Reward: {reward}, Done: {done}")  # Debugging log
+        # Check for crash or out of bounds
+        if abs(next_state[0]) > 100 or abs(next_state[1]) > 100 or next_state[2] > 0:
+            reward -= 100
+            done = True
 
-        return state, reward, done, {}
+        return next_state, reward, done, {}
 
-    def reset(self):
-        if self.check_collision():
-            print("Collision detected! Resetting drone...")
-            self.client.reset()
-            time.sleep(1)  # Allow time to stabilize
-            self.client.enableApiControl(True)
-            self.client.armDisarm(True)
-            self.client.takeoffAsync().join()
-            self.client.moveToZAsync(-3, 2).join()  # Move up after reset
+    def close(self):
+        """Cleanup and disarm"""
+        self.client.armDisarm(False)
+        self.client.enableApiControl(False)
+        print("Environment closed and drone disarmed.")
 
-        return self.get_state()  
+
+# ✅ Simple test (you can run: python Drone_env.py)
+if __name__ == "__main__":
+    env = DroneEnv()
+    obs = env.reset()
+    print("Initial Observation:", obs)
+
+    for i in range(10):
+        action = np.random.choice(env.action_space)
+        next_obs, reward, done, _ = env.step(action)
+        print(f"Step {i+1} | Action: {action} | Reward: {reward:.2f} | Done: {done}")
+        if done:
+            break
+
+    env.close()
